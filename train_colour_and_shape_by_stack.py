@@ -173,48 +173,55 @@ def train(model):
         best_score = 0.985
 
         img_all = []
-        op_lists_all = []
-        answers_all = []
+        # op_lists_all = []
+        # answers_all = []
         img_file_path_all = []
         all_obj_info = []
 
         for i in index_list:  # 内层迭代，遍历索引列表，获取训练样本。此时i为打乱后第一个样本的原序号
-            (img, op_lists, answers, img_file_path) = train_set[i]  # 获取训练样本的图像、操作列表、答案和图像文件路径。
+            (img,  img_file_path) = train_set[i]  # 获取训练样本的图像、操作列表、答案和图像文件路径。
             img_all.append(img)
-            op_lists_all.append(op_lists)
-            answers_all.append(answers)
+            # op_lists_all.append(op_lists)
+            # answers_all.append(answers)
             img_file_path_all.append(img_file_path)
+        op_lists_all, answers_all = train_set.get_op_list_new()
         all_obj_info.append(img_all)
         all_obj_info.append(op_lists_all)
         all_obj_info.append(answers_all)
         all_obj_info.append(img_file_path_all)
         # for i in index_list:  # 内层迭代，遍历索引列表，获取训练样本。此时i为打乱后第一个样本的原序号
         #     (img, op_lists, answers, img_file_path) = train_set[i]  # 获取训练样本的图像、操作列表、答案和图像文件路径。
-        for i in range(2):  # 对于每个样本，执行两次迭代
+        for i in range(8):  # 对于每个样本，执行两次迭代
             optimizer.zero_grad()  # 清零梯度
             # start_time = time.time()
             # print("start time begin")
             # op_lists_clip = [sublist[i] for sublist in op_lists_all] #从列表 op_lists_all 中的每个子列表 sublist 中提取第 i 个元素，并将这些提取的元素组成一个新的列表 op_lists_clip
-            op_list_single = op_lists_all[0][i]
-            y_pred = model(op_list_single, img_all, img_file_path_all, mode='train')  # 使用模型进行前向传播
-            y_pred = torch.stack([y for y in y_pred])
-            y_pred = y_pred.unsqueeze(1)
+            # op_list_single = op_lists_all[0][i]
+            y_pred = model(op_lists_all[i], img_all, img_file_path_all, mode='train')  # 使用模型进行前向传播，得到组合后且计数后的结果
+            # y_pred = torch.stack([y for y in y_pred])
+            # y_pred = y_pred.unsqueeze(1)
             model.concept_matrix2zero()  # 模型的 concept_matrix 置零。
 
-            answers_clip = [sublist[i] for sublist in answers_all]
-            answers_clip = torch.stack([ans1 for ans1 in answers_clip])
+            # answers_clip = [sublist[i] for sublist in answers_all]
+            # answers_clip = torch.stack([ans1 for ans1 in answers_clip])
 
-            for i in range(len(y_pred)):
-                optimizer.zero_grad()
-                y_pred_single = y_pred[i].unsqueeze(0)
-                answer_single = answers_clip[i].unsqueeze(0)
+            loss = loss_function(y_pred, answers_all[i])
+            loss.requires_grad_(True)
+            train_loss += loss.data  # 累加训练过程中的损失。
+            loss.backward()  # 反向传播。
+            optimizer.step()  # 参数更新。
 
-                loss = loss_function(y_pred_single, answer_single)  # 计算损失并进行反向传播和参数更新。
-
-                loss.requires_grad_(True)
-                train_loss += loss.data  # 累加训练过程中的损失。
-                loss.backward()  # 反向传播。
-                optimizer.step()  # 参数更新。
+            # for i in range(len(y_pred)):
+            #     optimizer.zero_grad()
+            #     y_pred_single = y_pred[i].unsqueeze(0)
+            #     answer_single = answers_clip[i].unsqueeze(0)
+            #
+            #     loss = loss_function(y_pred_single, answer_single)  # 计算损失并进行反向传播和参数更新。
+            #
+            #     loss.requires_grad_(True)
+            #     train_loss += loss.data  # 累加训练过程中的损失。
+            #     loss.backward()  # 反向传播。
+            #     optimizer.step()  # 参数更新。
             # print('=================train_loss=====================',train_loss)
             #
             # print('train_op_lists',op_lists[i])
@@ -455,6 +462,7 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
 
         # convert triple to QA
         questions_pos = []  # 存储将正例数据转换为 QA 格式的结果，其中每个问题是一个字典，包含图像路径、操作列表和答案。
+        self.img_path_pos = []
         for triple in triples_pos:  # 为每个属性添加op_list，有几个概念则每张小图片就添加几个op_list
             # question = {
             #     "image_id": triple[0],
@@ -466,24 +474,53 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
             #     "answer": triple[2],  # 答案就是triple中的subject
             #     "type": "index"
             # }
-            attribute_list = torch.zeros((1, 4))
-            attribute_list[0][triple[1]] = 1  # [[1,0,0,0]],意思就是是哪个类别，就在这个列表的哪个位置置为1，标签为0代表第一个位置为1
-            attribute_list = torch.reshape(attribute_list, (1, -1))  # 1表示新张量的第一个维度的大小，-1表示新张量的第二个维度是根据原始数据中元素总数自动推断的
-            # print(" attribute_list:", attribute_list)
-            question = []  # 初始化一个空列表question，用于存储一个样本的多个问题。
-            for i in range(2):  # 构造测试集的操作列表，由于该属性有两个概念，每个概念要一个操作列表，由于神经网络输出两个概念的值，故每个操作列表的概念矩阵索引分别对应了各自concept的位置
+            p = {"image_path": triple[0],}
+            self.img_path_pos.append(p)
+
+        #     0     1    2    3
+        #0  透白色，红色，黑色，白色
+        #1  不规则，方形
+        #组合后的：1透白+不规则=PVC or PU 2透白+方形=无 3红色+不规则=无 4红色+方形=PA66 5黑色+不规则=PP(black)
+        #        6黑色+方形=ABS(black) 7白色+不规则=PE 8白色+方形=PP(white) or ABS(white)
+
+        ##############
+        attribute_list = torch.zeros((1, 8)) #需要将每种颗粒的真值输入此处
+        attribute_list[0, 0] = 0 #透白+不规则=PVC or PU
+        attribute_list[0, 1] = 0 #透白+方形=无
+        attribute_list[0, 2] = 0 #红色+不规则=无
+        attribute_list[0, 3] = 0 #红色+方形=PA66
+        attribute_list[0, 4] = 0 #黑色+不规则=PP(black)
+        attribute_list[0, 5] = 0 #黑色+方形=ABS(black)
+        attribute_list[0, 6] = 0 #白色+不规则=PE
+        attribute_list[0, 7] = 0 #白色+方形=PP(white) or ABS(white)
+        #############
+
+        # attribute_list = torch.zeros((1, 8))
+        # attribute_list[0][triple[1]] = 1  # [[1,0,0,0]],意思就是是哪个类别，就在这个列表的哪个位置置为1，标签为0代表第一个位置为1
+        attribute_list = torch.reshape(attribute_list, (1, -1))  # 1表示新张量的第一个维度的大小，-1表示新张量的第二个维度是根据原始数据中元素总数自动推断的
+        # print(" attribute_list:", attribute_list)
+        question = []  # 初始化一个空列表question，用于存储一个样本的多个问题。
+        answer_index = 0
+        for i in range(4):  # 构造测试集的操作列表，由于该属性有两个概念，每个概念要一个操作列表，由于神经网络输出两个概念的值，故每个操作列表的概念矩阵索引分别对应了各自concept的位置
+            for j in range(4):
+                if j == 2:
+                    continue
+                elif j == 3:
+                    continue
                 answer = torch.zeros((1))
-                answer[0] = attribute_list[0][i]  # [0]or[1]，
+                answer[0] = attribute_list[0][answer_index]  #
+                answer_index = answer_index+1
                 q = {
-                    "image_path": triple[0],
+                    # "image_path": triple[0],
                     "op_list": [
                         {"op": "objects", "param": ""},  # 获取所有物体
                         {"op": "filter_nearest_obj", "param": ""},  # 找到最近的物体
-                        {"op": "obj_attibute", "param": [1, i]}],  # 通过filter判定该物体是否是triple中subject物体
+                        {"op": "obj_attibute", "param": [1, i]},  # 通过filter判定该物体是否是triple中subject物体
+                        {"op": "attribute_combin", "param":[i, j]}],
                     "answer": answer,  # 答案就是triple中的subject
                 }
                 question.append(q)
-            questions_pos.append(question)
+        questions_pos.append(question)
 
         # questions_neg = []
         # for triple in triples_neg:
@@ -501,26 +538,164 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
 
         # self.questions = questions_pos + questions_neg
         self.questions = questions_pos
-        self.len = len(self.questions)
+        self.len = len(self.img_path_pos)
 
     def __getitem__(self, index):
         # 根据索引提取数据集中的一个样本，包括图像、两个操作列表和两个答案。返回的元组可以用于模型的训练和评估。
-        img_path = self.questions[index][0]['image_path']  # 取出第一个op_list的图像作为图像
+        img_path = self.img_path_pos[index]['image_path']  # 取出第一个op_list的图像作为图像
 
         img_file_path = DATA_INPUT + img_path  # 构建完整的图像文件路径，将数据文件夹路径 DATA_INPUT 和图像路径拼接起来。
         # ann_file = DATA_INPUT + 'Annotation/shut-' + str(img_id).zfill(3) + '.xml'
         # print(img_file)
         img = imgtool.load_img(img_file_path)  # 使用 ImageTool 类加载图像，得到图像的张量表示。
+        # op_lists = []  # 初始化一个空列表，用于存储两个操作列表。
+        # for i in range(8):  # 循环遍历两个操作列表，并将它们添加到 op_lists 中。
+        #     op_list = self.questions[i]['op_list']
+        #     op_lists.append(op_list)
+        # answers = []  # 初始化一个空列表，用于存储两个答案。
+        # for i in range(8):  # 循环遍历两个答案，并将它们添加到 answers 中。
+        #     answer = self.questions[i]['answer']
+        #     answers.append(answer)
+
+        return (img, img_file_path)  # 返回一个包含图像、两个操作列表、两个答案以及图像文件路径的元组。
+
+    def get_op_list_new(self):
         op_lists = []  # 初始化一个空列表，用于存储两个操作列表。
-        for i in range(2):  # 循环遍历两个操作列表，并将它们添加到 op_lists 中。
-            op_list = self.questions[index][i]['op_list']
+        for i in range(8):  # 循环遍历两个操作列表，并将它们添加到 op_lists 中。
+            op_list = self.questions[0][i]['op_list']
             op_lists.append(op_list)
         answers = []  # 初始化一个空列表，用于存储两个答案。
-        for i in range(2):  # 循环遍历两个答案，并将它们添加到 answers 中。
-            answer = self.questions[index][i]['answer']
+        for i in range(8):  # 循环遍历两个答案，并将它们添加到 answers 中。
+            answer = self.questions[0][i]['answer']
             answers.append(answer)
+        return(op_lists, answers)
 
-        return (img, op_lists, answers, img_file_path)  # 返回一个包含图像、两个操作列表、两个答案以及图像文件路径的元组。
+############init备份开始
+    # def __init__(self, file):
+    #     # 这是初始化方法，接受一个文件路径 file 作为参数。
+    #     # self.eye_matrix = torch.eye(1)
+    #     self.imgtool = ImageTool()  # 创建 ImageTool 类的对象 imgtool，用于图像加载和处理。
+    #
+    #     # with open(file) as f:
+    #     #     triples = json.load(f)
+    #     # f.close()
+    #     triples_pos = []  # 存储正例数据，每个元素是一个元组，包含图像路径和属性信息。
+    #     with open(file) as f:
+    #         lines = f.readlines()  # 读取文件的所有行，并将其存储在lines列表中。
+    #         for i, line in enumerate(lines):  # 使用enumerate遍历文件的每一行，获取行号i和行内容line。
+    #             # if i == 0:
+    #             #     continue
+    #             (img_path, attribute_in) = line.split(
+    #                 ' ')  # dataset triple 格式 #将每行内容按空格分割，得到图像路径img_path和属性信息attribute_in。
+    #             triples_pos.append((img_path, int(attribute_in)))  # 将图像路径和属性信息作为元组添加到triples_pos列表中，属性信息转为整数类型。
+    #             # 读取数据文件，将每一行的图像路径和属性信息提取出来，存储在 triples_pos 中。这里的 triples_pos 存储的是正例的数据。
+    #
+    #     # # 负采样
+    #     # rate = 2  # 负采样比例
+    #     # triples_neg = []
+    #     # for triple in triples_pos:
+    #     #     (img_id, obj_id, sub_id, rel_id) = triple
+    #     #
+    #     #     # 读取图片中物体数量
+    #     #     img_file = DATA_INPUT + 'images/shut-' + str(img_id).zfill(3) + '.jpg'
+    #     #     ann_file = DATA_INPUT + 'Annotation/shut-' + str(img_id).zfill(3) + '.xml'
+    #     #     # print(img_file)
+    #     #     img, ann = imgtool.load_img(img_file, ann_file)
+    #     #     obj_num = len(ann)
+    #     #
+    #     #     cnt = 0
+    #     #
+    #     #     while (cnt < rate):
+    #     #         # 打乱头尾实体，构造负例
+    #     #         neg_sub_id = random.randint(0, obj_num - 1)
+    #     #         neg_obj_id = random.randint(0, obj_num - 1)
+    #     #         # neg_obj_id = obj_id
+    #     #         neg_triple = (img_id, neg_obj_id, neg_sub_id, rel_id)
+    #     #         if (neg_triple not in triples_pos) and (neg_triple not in triples_neg):
+    #     #             triples_neg.append(neg_triple)
+    #     #             cnt += 1
+    #     #             # print(neg_triple)
+    #     # print('[INFO] neg sample finish')
+    #     # # print(len(triples_pos), len(triples_neg))
+    #
+    #     self.triples_pos = triples_pos  # 将正例的数据存储在self.triples_pos中。
+    #     # self.triples_neg = triples_neg
+    #     # self.triples = triples_pos + triples_neg
+    #     self.triples = triples_pos  # 存储了所有样本（包括正例和负例）的元组，而 self.questions 存储了所有样本转换为 QA 格式的结果。
+    #     self.len = len(self.triples)  # 记录了数据集的长度。
+    #     # 将正例的数据存储在 self.triples_pos 中，并将总体的长度存储在 self.len 中。
+    #
+    #     # convert triple to QA
+    #     questions_pos = []  # 存储将正例数据转换为 QA 格式的结果，其中每个问题是一个字典，包含图像路径、操作列表和答案。
+    #     for triple in triples_pos:  # 为每个属性添加op_list，有几个概念则每张小图片就添加几个op_list
+    #         # question = {
+    #         #     "image_id": triple[0],
+    #         #     "op_list": [
+    #         #         {"op": "objects", "param": ""},  # 获取所有物体
+    #         #         {"op": "filter_index", "param": triple[1]},  # 通过filter找到 triple中object的物体
+    #         #         {"op": "relate", "param": id2rel[triple[3]]},  # 以object物体为起点，通过relate操作查询于其具有triple中rel关系的物体
+    #         #         {"op": "filter_index", "param": triple[2]}],  # 通过filter判定该物体是否是triple中subject物体
+    #         #     "answer": triple[2],  # 答案就是triple中的subject
+    #         #     "type": "index"
+    #         # }
+    #         attribute_list = torch.zeros((1, 4))
+    #         attribute_list[0][triple[1]] = 1  # [[1,0,0,0]],意思就是是哪个类别，就在这个列表的哪个位置置为1，标签为0代表第一个位置为1
+    #         attribute_list = torch.reshape(attribute_list, (1, -1))  # 1表示新张量的第一个维度的大小，-1表示新张量的第二个维度是根据原始数据中元素总数自动推断的
+    #         # print(" attribute_list:", attribute_list)
+    #         question = []  # 初始化一个空列表question，用于存储一个样本的多个问题。
+    #         for i in range(2):  # 构造测试集的操作列表，由于该属性有两个概念，每个概念要一个操作列表，由于神经网络输出两个概念的值，故每个操作列表的概念矩阵索引分别对应了各自concept的位置
+    #
+    #             answer = torch.zeros((1))
+    #             answer[0] = attribute_list[0][i]  # [0]or[1]，
+    #             q = {
+    #                 "image_path": triple[0],
+    #                 "op_list": [
+    #                     {"op": "objects", "param": ""},  # 获取所有物体
+    #                     {"op": "filter_nearest_obj", "param": ""},  # 找到最近的物体
+    #                     {"op": "obj_attibute", "param": [1, i]}],
+    #                 "answer": answer,  # 答案就是triple中的subject
+    #             }
+    #             question.append(q)
+    #         questions_pos.append(question)
+    #
+    #     # questions_neg = []
+    #     # for triple in triples_neg:
+    #     #     question = {
+    #     #         "image_id": triple[0],
+    #     #         "op_list": [
+    #     #             {"op": "objects", "param": ""},
+    #     #             {"op": "filter_index", "param": triple[1]},
+    #     #             {"op": "relate", "param": id2rel[triple[3]]},
+    #     #             {"op": "filter_index", "param": triple[2]}],
+    #     #         "answer": triple[2],
+    #     #         "type": "index_neg"
+    #     #     }
+    #     #     questions_neg.append(question)
+    #
+    #     # self.questions = questions_pos + questions_neg
+    #     self.questions = questions_pos
+    #     self.len = len(self.questions)
+    ###################init备份结束
+
+
+    # def __getitem__(self, index):
+    #     # 根据索引提取数据集中的一个样本，包括图像、两个操作列表和两个答案。返回的元组可以用于模型的训练和评估。
+    #     img_path = self.questions[index][0]['image_path']  # 取出第一个op_list的图像作为图像
+    #
+    #     img_file_path = DATA_INPUT + img_path  # 构建完整的图像文件路径，将数据文件夹路径 DATA_INPUT 和图像路径拼接起来。
+    #     # ann_file = DATA_INPUT + 'Annotation/shut-' + str(img_id).zfill(3) + '.xml'
+    #     # print(img_file)
+    #     img = imgtool.load_img(img_file_path)  # 使用 ImageTool 类加载图像，得到图像的张量表示。
+    #     op_lists = []  # 初始化一个空列表，用于存储两个操作列表。
+    #     for i in range(2):  # 循环遍历两个操作列表，并将它们添加到 op_lists 中。
+    #         op_list = self.questions[index][i]['op_list']
+    #         op_lists.append(op_list)
+    #     answers = []  # 初始化一个空列表，用于存储两个答案。
+    #     for i in range(2):  # 循环遍历两个答案，并将它们添加到 answers 中。
+    #         answer = self.questions[index][i]['answer']
+    #         answers.append(answer)
+    #
+    #     return (img, op_lists, answers, img_file_path)  # 返回一个包含图像、两个操作列表、两个答案以及图像文件路径的元组。
 
     # def __getitem__(self, index):
     #     img_id = self.questions[index]['image_id']

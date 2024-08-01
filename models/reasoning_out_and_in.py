@@ -97,6 +97,16 @@ class Reasoning(nn.Module):
                 buffer.append(exec.filter_nearest_obj(buffer[-1]))
             elif op == 'obj_attibute':
                 buffer.append(exec.obj_attibute(buffer[-1], param[0], param[1]))
+
+            elif op == 'attribute_combin':
+                buffer.append(exec.attribute_combin(param[0], param[1]))
+                # colour_selected_all = concept_matrix[0, param[0], :]
+                # shape_selected_all = concept_matrix[1, param[1], :]
+                # color_binary = torch.where(colour_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+                # shape_binary = torch.where(shape_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+                # combin_answer = color_binary * shape_binary
+                # buffer.append(combin_answer.sum())
+
             elif op == 'attibute2sleeve':
                 buffer.append(exec.attibute2sleeve(buffer[-1], param))
             elif op == 'filter_name':
@@ -428,6 +438,15 @@ class Executor(nn.Module):
         # attibute_vec=torch.reshape(attibute_vec, (1, -1))
         return mask
 
+    def attribute_combin(self, colour_index, shape_index):
+        colour_selected_all = self.concept_matrix[0, colour_index, :]
+        shape_selected_all = self.concept_matrix[1, shape_index, :]
+        color_binary = torch.where(colour_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        shape_binary = torch.where(shape_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        combin_answer = color_binary * shape_binary
+        combin_num = combin_answer.sum()
+        return combin_num
+
     def exist(self, selected):
         '''
         '''
@@ -484,6 +503,9 @@ class Executor(nn.Module):
                     elif mode == 'train' or mode == 'infer':
                         concept_matrix[attritube_index][concept_index][obj_index] = res[attritube_index][obj_index][
                             concept_index]
+                        # c_m_one = torch.ones(attritube_index, concept_index, obj_index)
+                        # c_m_zero = torch.zeros(attritube_index, concept_index, obj_index)
+                        # concept_matrix = torch.where(concept_matrix >= 0.5, c_m_one, c_m_zero)
                     # if concept2id_name[ann[obj_index]['name']] == concept_index:
                     #     concept_matrix[0][concept_index][obj_index] = 1
         # 1 dim for 'obj local index'
@@ -493,6 +515,11 @@ class Executor(nn.Module):
         # for obj_index in range(min(max_obj_num, len(ann))):
         #     concept_matrix[2][0][obj_index] = 1
         # print("concept_matrix:",concept_matrix)
+
+        # if mode == 'train' or mode == 'infer':
+        #     c_m_one =  torch.ones(max_attribute_num, max_concept_num, max_obj_num)
+        #     c_m_zero = torch.zeros(max_attribute_num, max_concept_num, max_obj_num)
+        #     concept_matrix = torch.where(concept_matrix >= 0.5, c_m_one, c_m_zero)
 
         return concept_matrix
 
