@@ -441,8 +441,10 @@ class Executor(nn.Module):
     def attribute_combin(self, colour_index, shape_index):
         colour_selected_all = self.concept_matrix[0, colour_index, :]
         shape_selected_all = self.concept_matrix[1, shape_index, :]
-        color_binary = torch.where(colour_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
-        shape_binary = torch.where(shape_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        color_binary = torch.sigmoid((colour_selected_all - 0.5) * 100)
+        shape_binary = torch.sigmoid((shape_selected_all - 0.5) * 100)
+        # color_binary = torch.where(colour_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        # shape_binary = torch.where(shape_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
         combin_answer = color_binary * shape_binary
         combin_num = combin_answer.sum()
         return combin_num

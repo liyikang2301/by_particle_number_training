@@ -15,7 +15,7 @@ import json
 import random
 import time
 from torch.autograd import Variable
-# from graphviz import Digraph
+from graphviz import Digraph
 
 
 from crop_pic_sin import crop_and_filter_objects
@@ -32,6 +32,7 @@ from torchvision.transforms import transforms
 import PIL
 from torchviz import make_dot
 
+
 # shape2_square
 
 DATA_INPUT = r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet/"  # 用于生成训练集与测试集路径
@@ -44,7 +45,7 @@ imgtool = ImageTool()
 
 # def make_dot(var, params=None):
 #     if params is not None:
-#         assert isinstance(params.values()[0], Variable)
+#         assert isinstance(list(params.values())[0], Variable)
 #         param_map = {id(v): k for k, v in params.items()}
 #
 #     node_attr = dict(style='filled',
@@ -120,15 +121,15 @@ def get_args_parser():
 # --dist_eval: 是否启用分布式评估。在训练期间，分布式评估可能更快。
 # --device: 指定用于训练或测试的设备，默认为 'cuda'。可以设置为 'cpu' 或其他 PyTorch 支持的设备。
 
-def train(model):
+def  train(model):
     # 实现了一个简单的训练和测试过程。训练函数，接受一个模型 model 作为输入。在这个函数中，完成了模型的训练和测试。
     # 其中模型使用了交叉熵损失函数、Adam 优化器，并对数据集进行了随机打乱。在每个 epoch 中，都会输出训练和测试的损失
     # 以及测试的准确率。如果测试准确率达到某个阈值，则保存当前模型。
     train_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")
     test_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")  # use triple
     # 用于训练和测试的数据集。使用 TripleDataset 类加载训练集和测试集。
-    lr = 0.001
-    epoch_num = 100
+    lr = 0.01
+    epoch_num = 30
     loss_function = nn.MSELoss(reduction='none')  # 超参数：损失函数
     # loss_function = nn.CrossEntropyLoss()
     # loss_function = nn.BCELoss()
@@ -198,6 +199,7 @@ def train(model):
             # op_lists_clip = [sublist[i] for sublist in op_lists_all] #从列表 op_lists_all 中的每个子列表 sublist 中提取第 i 个元素，并将这些提取的元素组成一个新的列表 op_lists_clip
             # op_list_single = op_lists_all[0][i]
             y_pred = model(op_lists_all[i], img_all, img_file_path_all, mode='train')  # 使用模型进行前向传播，得到组合后且计数后的结果
+
             # y_pred = torch.stack([y for y in y_pred])
             # y_pred = y_pred.unsqueeze(1)
             model.concept_matrix2zero()  # 模型的 concept_matrix 置零。
@@ -230,51 +232,61 @@ def train(model):
         # ------------------- test model ---------------
         # test_set = train_set
         # print('=================开始测试=========================')
-        for i in range(test_set.len):  # 执行测试阶段
-            (img, op_lists, answers, img_file_path) = test_set[i]  # 获取测试样本。
-            for i in range(2):  # 对于每个样本，执行两次迭代。
-                y_pred = model(op_lists[i], img, img_file_path, mode='train')  # 对测试集的每个样本，使用模型进行前向传播。
-                model.concept_matrix2zero()  # 将模型的 concept_matrix 置零。
-                loss = loss_function(y_pred, answers[i])  # 计算测试损失。
-                test_loss += loss.data
-                y_pred = model(op_lists[i], img, img_file_path, mode='test')  # 对测试集的每个样本，使用模型进行前向传播。
-                model.concept_matrix2zero()
-                # print('预测结果',y_pred) #输出测试集上的预测结果。
-
-                # print('真实结果',answers[i]) #输出测试集上的真实答案。
-                # acc compute
-                if y_pred.equal(answers[i]):
-                    acc += 1
-                # print('test_op_lists', op_lists[i])
-                # print('test_answers', answers[i])
+        #################测试部分
+        # for i in range(test_set.len):  # 执行测试阶段
+        #     (img, op_lists, answers, img_file_path) = test_set[i]  # 获取测试样本。
+        #     for i in range(2):  # 对于每个样本，执行两次迭代。
+        #         y_pred = model(op_lists[i], img, img_file_path, mode='train')  # 对测试集的每个样本，使用模型进行前向传播。
+        #         model.concept_matrix2zero()  # 将模型的 concept_matrix 置零。
+        #         loss = loss_function(y_pred, answers[i])  # 计算测试损失。
+        #         test_loss += loss.data
+        #         y_pred = model(op_lists[i], img, img_file_path, mode='test')  # 对测试集的每个样本，使用模型进行前向传播。
+        #         model.concept_matrix2zero()
+        #         # print('预测结果',y_pred) #输出测试集上的预测结果。
+        #
+        #         # print('真实结果',answers[i]) #输出测试集上的真实答案。
+        #         # acc compute
+        #         if y_pred.equal(answers[i]):
+        #             acc += 1
+        #         # print('test_op_lists', op_lists[i])
+        #         # print('test_answers', answers[i])
+        #######################
 
         # print('[INFO] pos cnt', train_pos_cnt, 'neg cnt', train_neg_cnt)
         # print('[INFO] pos ans', ans_pos, 'neg ans', ans_neg)
+        # dot = make_dot(loss, params=dict(model.named_parameters()))
+        # dot = make_dot(loss,
+        #                params=dict(y_pred=y_pred, ))
+        # dot.render(r"F:\study\3_5programtest\8_bolt_change_v3/and_graph", format="pdf")
         print('[INFO] ---train---')
         print('[INFO]---- train loss ----:', train_loss / (train_set.len * 2))
+        print('[INFO]---- train loss org ----:', train_loss)
         # print('[INFO]---- train pos loss ----:', loss_pos / train_pos_cnt)
         # print('[INFO]---- train neg loss ----:', loss_neg / train_neg_cnt)
-        print('[INFO] ---test---')
+        # print('[INFO] ---test---')
         # print('[INFO]---- pred avg ----:', pred_tot / test_set.len)
         # print('[INFO]---- pred avg pos----:', pred_pos / test_pos_cnt)
         # print('[INFO]---- pred avg neg----:', pred_neg / test_neg_cnt)
-        print('[INFO]---- test loss ----:', test_loss / (test_set.len * 2))
-        print('[INFO] ---eval---')
-        print('[INFO]---- test acc ----:', acc / (test_set.len * 2))
+        # print('[INFO]---- test loss ----:', test_loss / (test_set.len * 2))
+        # print('[INFO] ---eval---')
+        # print('[INFO]---- test acc ----:', acc / (test_set.len * 2))
         # print('[INFO]---- test acc pos----:', acc_pos / test_pos_cnt)
         # print('[INFO]---- test acc neg----:', acc_neg / test_neg_cnt)
         # print('[INFO]---- test P ----:', P)
         # print('[INFO]---- test R ----:', R)
         # print('[INFO]---- test F1 ----:', F1)
-
+    name_str = r'./data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint/model_and_test_4neg.pkl'
+    torch.save(model, name_str)  # 如果测试准确率达到某个阈值，则保存当前模型。
         # if F1 >= best_score:
-        if round(acc / (test_set.len * 2), 5) >= best_score:
-            # 如果测试准确率（acc）达到某个阈值（best_score），则保存当前模型。
-            # best_score = round(F1, 2)
-            best_score = round(acc / (test_set.len * 2), 5)
-            name_str = r'./data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint/model_shape_best_4neg.pkl'.replace(
-                'best', str(best_score))
-            torch.save(model, name_str)  # 如果测试准确率达到某个阈值，则保存当前模型。
+        ########################
+        # if round(acc / (test_set.len * 2), 5) >= best_score:
+        #     # 如果测试准确率（acc）达到某个阈值（best_score），则保存当前模型。
+        #     # best_score = round(F1, 2)
+        #     best_score = round(acc / (test_set.len * 2), 5)
+        #     name_str = r'./data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint/model_shape_best_4neg.pkl'.replace(
+        #         'best', str(best_score))
+        #     torch.save(model, name_str)  # 如果测试准确率达到某个阈值，则保存当前模型。
+        #############################
             # infer_checkpoint(model)
             # break
 
@@ -463,6 +475,7 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
         # convert triple to QA
         questions_pos = []  # 存储将正例数据转换为 QA 格式的结果，其中每个问题是一个字典，包含图像路径、操作列表和答案。
         self.img_path_pos = []
+        # random.shuffle(triples_pos)
         for triple in triples_pos:  # 为每个属性添加op_list，有几个概念则每张小图片就添加几个op_list
             # question = {
             #     "image_id": triple[0],
@@ -485,14 +498,14 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
 
         ##############
         attribute_list = torch.zeros((1, 8)) #需要将每种颗粒的真值输入此处
-        attribute_list[0, 0] = 0 #透白+不规则=PVC or PU
+        attribute_list[0, 0] = 18 #透白+不规则=PVC or PU
         attribute_list[0, 1] = 0 #透白+方形=无
         attribute_list[0, 2] = 0 #红色+不规则=无
         attribute_list[0, 3] = 0 #红色+方形=PA66
         attribute_list[0, 4] = 0 #黑色+不规则=PP(black)
         attribute_list[0, 5] = 0 #黑色+方形=ABS(black)
-        attribute_list[0, 6] = 0 #白色+不规则=PE
-        attribute_list[0, 7] = 0 #白色+方形=PP(white) or ABS(white)
+        attribute_list[0, 6] = 17 #白色+不规则=PE
+        attribute_list[0, 7] = 15 #白色+方形=PP(white) or ABS(white)
         #############
 
         # attribute_list = torch.zeros((1, 8))
@@ -737,10 +750,10 @@ if __name__ == "__main__":
     args = get_args_parser()
     args = args.parse_args()  # 用于解析已知参数，且出现为识别的参数报错
     # Model Load
-    # model_shape = Reasoning(args)  # 初始模型
+    model_shape = Reasoning(args)  # 初始模型
     # for name, param in model_shape.named_parameters(): #named_parameters()函数用于获取模块参数的标准方式，他使得可以方便地访问和操作神经网络模型中的参数。
     #     print(name, param.size(), type(param))
-    model_shape = torch.load(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint\model_shape_0.98611_4neg.pkl",map_location=torch.device(device)) #导入之前训练好的模型
+    # model_shape = torch.load(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint\model_and_test_4neg.pkl",map_location=torch.device(device)) #导入之前训练好的模型
 
     train(model_shape)  # 训练流程
 
