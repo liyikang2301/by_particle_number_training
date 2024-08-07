@@ -23,16 +23,17 @@ from crop_pic_sin import crop_and_filter_objects
 
 from models.rel_models import OnClassify_v1
 # from demo import ImageTool
-from models.reasoning_out_and_in import Reasoning
-from models.reasoning_out_and_in import id2rel
-from models.reasoning_out_and_in import ImageTool
+from models.reasoning_out_and_in_and import Reasoning
+from models.reasoning_out_and_in_and import id2rel
+from models.reasoning_out_and_in_and import ImageTool
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import transforms
 import PIL
 from torchviz import make_dot
 
-
+# import sys  # 导入sys模块
+# sys.setrecursionlimit(3000)  # 将默认的递归深度修改为3000
 # shape2_square
 
 DATA_INPUT = r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet/"  # 用于生成训练集与测试集路径
@@ -41,6 +42,67 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # device = torch.device("cpu")
 imgtool = ImageTool()
+
+###############自己网上复制的
+# def make_dot(var, params=None):
+#     """
+#     画出 PyTorch 自动梯度图 autograd graph 的 Graphviz 表示.
+#     蓝色节点表示有梯度计算的变量Variables;
+#     橙色节点表示用于 torch.autograd.Function 中的 backward 的张量 Tensors.
+#     Args:
+#         var: output Variable
+#         params: dict of (name, Variable) to add names to node that
+#             require grad (TODO: make optional)
+#     """
+#     if params is not None:
+#         assert all(isinstance(p, Variable) for p in params.values())
+#         param_map = {id(v): k for k, v in params.items()}
+#
+#     node_attr = dict(style='filled', shape='box', align='left',
+#                      fontsize='12', ranksep='0.1', height='0.2')
+#     dot = Digraph(node_attr=node_attr, graph_attr=dict(size="12,12"))
+#     seen = set()
+#
+#     def size_to_str(size):
+#         return '(' + (', ').join(['%d' % v for v in size]) + ')'
+#
+#     output_nodes = (var.grad_fn,) if not isinstance(var, tuple) else tuple(v.grad_fn for v in var)
+#
+#     def add_nodes(var):
+#         if var not in seen:
+#             if torch.is_tensor(var):
+#                 # note: this used to show .saved_tensors in pytorch0.2, but stopped
+#                 # working as it was moved to ATen and Variable-Tensor merged
+#                 dot.node(str(id(var)), size_to_str(var.size()), fillcolor='orange')
+#             elif hasattr(var, 'variable'):
+#                 u = var.variable
+#                 name = param_map[id(u)] if params is not None else ''
+#                 node_name = '%s\n %s' % (name, size_to_str(u.size()))
+#                 dot.node(str(id(var)), node_name, fillcolor='lightblue')
+#             elif var in output_nodes:
+#                 dot.node(str(id(var)), str(type(var).__name__), fillcolor='darkolivegreen1')
+#             else:
+#                 dot.node(str(id(var)), str(type(var).__name__))
+#             seen.add(var)
+#             if hasattr(var, 'next_functions'):
+#                 for u in var.next_functions:
+#                     if u[0] is not None:
+#                         dot.edge(str(id(u[0])), str(id(var)))
+#                         add_nodes(u[0])
+#             if hasattr(var, 'saved_tensors'):
+#                 for t in var.saved_tensors:
+#                     dot.edge(str(id(t)), str(id(var)))
+#                     add_nodes(t)
+#
+#     # 多输出场景 multiple outputs
+#     if isinstance(var, tuple):
+#         for v in var:
+#             add_nodes(v.grad_fn)
+#     else:
+#         add_nodes(var.grad_fn)
+#     return dot
+#################################
+
 
 
 # def make_dot(var, params=None):
@@ -125,12 +187,13 @@ def  train(model):
     # 实现了一个简单的训练和测试过程。训练函数，接受一个模型 model 作为输入。在这个函数中，完成了模型的训练和测试。
     # 其中模型使用了交叉熵损失函数、Adam 优化器，并对数据集进行了随机打乱。在每个 epoch 中，都会输出训练和测试的损失
     # 以及测试的准确率。如果测试准确率达到某个阈值，则保存当前模型。
-    train_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")
+    train_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attrib22222.tsv")
     test_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")  # use triple
     # 用于训练和测试的数据集。使用 TripleDataset 类加载训练集和测试集。
     lr = 0.01
-    epoch_num = 30
+    epoch_num = 1
     loss_function = nn.MSELoss(reduction='none')  # 超参数：损失函数
+    # loss_function = torch.nn.L1Loss(reduction='none')
     # loss_function = nn.CrossEntropyLoss()
     # loss_function = nn.BCELoss()
 
@@ -192,6 +255,7 @@ def  train(model):
         all_obj_info.append(img_file_path_all)
         # for i in index_list:  # 内层迭代，遍历索引列表，获取训练样本。此时i为打乱后第一个样本的原序号
         #     (img, op_lists, answers, img_file_path) = train_set[i]  # 获取训练样本的图像、操作列表、答案和图像文件路径。
+        plastic_name = ['PVC','无','无','PA66','PP(BLACK)','ABS(BLACK)','PE','PP(WHITE)']
         for i in range(8):  # 对于每个样本，执行两次迭代
             optimizer.zero_grad()  # 清零梯度
             # start_time = time.time()
@@ -199,7 +263,11 @@ def  train(model):
             # op_lists_clip = [sublist[i] for sublist in op_lists_all] #从列表 op_lists_all 中的每个子列表 sublist 中提取第 i 个元素，并将这些提取的元素组成一个新的列表 op_lists_clip
             # op_list_single = op_lists_all[0][i]
             y_pred = model(op_lists_all[i], img_all, img_file_path_all, mode='train')  # 使用模型进行前向传播，得到组合后且计数后的结果
+            dot = make_dot(y_pred,params=dict(model.named_parameters()))
+            # dot = make_dot(loss, params=dict(y_pred=y_pred, ))
+            dot.render(r"F:\study\3_5programtest\8_bolt_change_v3/and_graph2", format="pdf")
 
+            print('颗粒名称:',plastic_name[i],'---','预测个数:',y_pred)
             # y_pred = torch.stack([y for y in y_pred])
             # y_pred = y_pred.unsqueeze(1)
             model.concept_matrix2zero()  # 模型的 concept_matrix 置零。
@@ -275,8 +343,8 @@ def  train(model):
         # print('[INFO]---- test P ----:', P)
         # print('[INFO]---- test R ----:', R)
         # print('[INFO]---- test F1 ----:', F1)
-    name_str = r'./data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint/model_and_test_4neg.pkl'
-    torch.save(model, name_str)  # 如果测试准确率达到某个阈值，则保存当前模型。
+    # name_str = r'./data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\checkpoint/model_and_test_4neg.pkl'
+    # torch.save(model, name_str)  # 如果测试准确率达到某个阈值，则保存当前模型。
         # if F1 >= best_score:
         ########################
         # if round(acc / (test_set.len * 2), 5) >= best_score:
@@ -498,14 +566,14 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
 
         ##############
         attribute_list = torch.zeros((1, 8)) #需要将每种颗粒的真值输入此处
-        attribute_list[0, 0] = 18 #透白+不规则=PVC or PU
+        attribute_list[0, 0] = 0 #透白+不规则=PVC or PU  每种49
         attribute_list[0, 1] = 0 #透白+方形=无
         attribute_list[0, 2] = 0 #红色+不规则=无
-        attribute_list[0, 3] = 0 #红色+方形=PA66
+        attribute_list[0, 3] = 1 #红色+方形=PA66
         attribute_list[0, 4] = 0 #黑色+不规则=PP(black)
         attribute_list[0, 5] = 0 #黑色+方形=ABS(black)
-        attribute_list[0, 6] = 17 #白色+不规则=PE
-        attribute_list[0, 7] = 15 #白色+方形=PP(white) or ABS(white)
+        attribute_list[0, 6] = 1 #白色+不规则=PE
+        attribute_list[0, 7] = 0 #白色+方形=PP(white) or ABS(white)
         #############
 
         # attribute_list = torch.zeros((1, 8))
@@ -528,7 +596,7 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
                     "op_list": [
                         {"op": "objects", "param": ""},  # 获取所有物体
                         {"op": "filter_nearest_obj", "param": ""},  # 找到最近的物体
-                        {"op": "obj_attibute", "param": [1, i]},  # 通过filter判定该物体是否是triple中subject物体
+                        # {"op": "obj_attibute", "param": [1, i]},  # 通过filter判定该物体是否是triple中subject物体
                         {"op": "attribute_combin", "param":[i, j]}],
                     "answer": answer,  # 答案就是triple中的subject
                 }
