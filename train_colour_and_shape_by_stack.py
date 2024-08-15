@@ -187,11 +187,11 @@ def  train(model):
     # 实现了一个简单的训练和测试过程。训练函数，接受一个模型 model 作为输入。在这个函数中，完成了模型的训练和测试。
     # 其中模型使用了交叉熵损失函数、Adam 优化器，并对数据集进行了随机打乱。在每个 epoch 中，都会输出训练和测试的损失
     # 以及测试的准确率。如果测试准确率达到某个阈值，则保存当前模型。
-    train_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attrib22222.tsv")
+    train_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")
     test_set = TripleDataset(r"F:\study\3_5programtest\8_bolt_change_v3\data_plastic\plastic_data_set_v4_Industrial_camera_6plastic\4_1080p_9PM_arealight1largellittle_lowst_f3.1_striplight4l_4s\shape_incloud_colour_data_aug_200transet\attribute_shape_and_model.tsv")  # use triple
     # 用于训练和测试的数据集。使用 TripleDataset 类加载训练集和测试集。
-    lr = 0.01
-    epoch_num = 1
+    lr = 0.005
+    epoch_num = 50
     loss_function = nn.MSELoss(reduction='none')  # 超参数：损失函数
     # loss_function = torch.nn.L1Loss(reduction='none')
     # loss_function = nn.CrossEntropyLoss()
@@ -263,9 +263,10 @@ def  train(model):
             # op_lists_clip = [sublist[i] for sublist in op_lists_all] #从列表 op_lists_all 中的每个子列表 sublist 中提取第 i 个元素，并将这些提取的元素组成一个新的列表 op_lists_clip
             # op_list_single = op_lists_all[0][i]
             y_pred = model(op_lists_all[i], img_all, img_file_path_all, mode='train')  # 使用模型进行前向传播，得到组合后且计数后的结果
-            dot = make_dot(y_pred,params=dict(model.named_parameters()))
+            y_pred = y_pred.reshape(-1)
+            # dot = make_dot(y_pred,params=dict(model.named_parameters()))
             # dot = make_dot(loss, params=dict(y_pred=y_pred, ))
-            dot.render(r"F:\study\3_5programtest\8_bolt_change_v3/and_graph2", format="pdf")
+            # dot.render(r"F:\study\3_5programtest\8_bolt_change_v3/and_graph4_sigmoid", format="pdf")
 
             print('颗粒名称:',plastic_name[i],'---','预测个数:',y_pred)
             # y_pred = torch.stack([y for y in y_pred])
@@ -327,8 +328,8 @@ def  train(model):
         #                params=dict(y_pred=y_pred, ))
         # dot.render(r"F:\study\3_5programtest\8_bolt_change_v3/and_graph", format="pdf")
         print('[INFO] ---train---')
-        print('[INFO]---- train loss ----:', train_loss / (train_set.len * 2))
-        print('[INFO]---- train loss org ----:', train_loss)
+        # print('[INFO]---- train loss ----:', train_loss / (train_set.len * 2))
+        print('[INFO]---- train loss all ----:', train_loss)
         # print('[INFO]---- train pos loss ----:', loss_pos / train_pos_cnt)
         # print('[INFO]---- train neg loss ----:', loss_neg / train_neg_cnt)
         # print('[INFO] ---test---')
@@ -566,14 +567,14 @@ class TripleDataset(Dataset):  # 用于加载训练和测试数据。
 
         ##############
         attribute_list = torch.zeros((1, 8)) #需要将每种颗粒的真值输入此处
-        attribute_list[0, 0] = 0 #透白+不规则=PVC or PU  每种49
+        attribute_list[0, 0] = 49 #透白+不规则=PVC or PU  每种49
         attribute_list[0, 1] = 0 #透白+方形=无
         attribute_list[0, 2] = 0 #红色+不规则=无
-        attribute_list[0, 3] = 1 #红色+方形=PA66
-        attribute_list[0, 4] = 0 #黑色+不规则=PP(black)
-        attribute_list[0, 5] = 0 #黑色+方形=ABS(black)
-        attribute_list[0, 6] = 1 #白色+不规则=PE
-        attribute_list[0, 7] = 0 #白色+方形=PP(white) or ABS(white)
+        attribute_list[0, 3] = 49 #红色+方形=PA66
+        attribute_list[0, 4] = 49 #黑色+不规则=PP(black)
+        attribute_list[0, 5] = 49 #黑色+方形=ABS(black)
+        attribute_list[0, 6] = 49 #白色+不规则=PE
+        attribute_list[0, 7] = 49 #白色+方形=PP(white) or ABS(white)
         #############
 
         # attribute_list = torch.zeros((1, 8))

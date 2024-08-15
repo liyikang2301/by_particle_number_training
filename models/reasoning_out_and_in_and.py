@@ -27,9 +27,9 @@ from models import models_vit
 
 max_attribute_num = 2  ################################change(3/n)
 
-max_obj_num = 2
+max_obj_num = 294
 max_concept_num = 4  ################################change(4/n)
-max_rel_num = 10
+# max_rel_num = None
 
 concept_matrix = None
 relate_matrix = None
@@ -442,7 +442,7 @@ class Executor(nn.Module):
         colour_selected_all = self.concept_matrix[0, colour_index, :]
         shape_selected_all = self.concept_matrix[1, shape_index, :]
         color_binary = torch.sigmoid((colour_selected_all - 0.5) * 100)
-        shape_binary = torch.sigmoid((shape_selected_all - 0.4) * 100)
+        shape_binary = torch.sigmoid((shape_selected_all - 0.5) * 100)
         # color_binary = torch.where(colour_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
         # shape_binary = torch.where(shape_selected_all >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
         combin_answer = selected * color_binary * shape_binary
