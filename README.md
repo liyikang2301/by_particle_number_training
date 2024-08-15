@@ -6,5 +6,6 @@
 reasoning_out_and_in_and.py中在attributes_classify中添加了pic_tens = torch.stack([pic for pic in pic_ten])，使每颗颗粒的小图像全部添加到pic_tens中，一起送入网络，得到所有颗粒的小图片预测结果，然后根据属性组合操作attribute_combin进行将两种属性特定概念的组合，在组合前通过torch.where函数实现大于等于0.5的置信度变为1，小于0.5变为0，组合完毕后通过sum函数统计满足组合的数量，然后与真实值计算loss，进行训练。
 
 
-计算图为and_graph2.pdf
+计算图and_graph3_where.pdf为使用torch.where函数将预测概率转化为0或1，生成的计算图，貌似这个方法不是连续的，最后只生成了两个框；
+计算图and_graph4_sigmoid.pdf为使用torch.sigmoid函数生成的计算图，看上去比较正常。
 
